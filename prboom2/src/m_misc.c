@@ -280,7 +280,7 @@ cfg_def_t cfg_defs[] =
   MIGRATED_SETTING(dsda_config_hudadd_crosshair_target_color),
   MIGRATED_SETTING(dsda_config_hudadd_crosshair_lock_target),
 
-  SETTING_HEADING("DSDA-Doom settings"),
+  SETTING_HEADING("NexusDoom settings"),
   // MIGRATED_SETTING(dsda_config_strict_mode), Do not persist
   MIGRATED_SETTING(dsda_config_cycle_ghost_colors),
   MIGRATED_SETTING(dsda_config_auto_key_frame_interval),
@@ -705,9 +705,9 @@ void M_LoadDefaults (void)
   else
   {
     const char* configdir = I_ConfigDir();
-    int len = snprintf(NULL, 0, "%s/dsda-doom.cfg", configdir);
+    int len = snprintf(NULL, 0, "%s/nexusdoom.cfg", configdir);
     defaultfile = Z_Malloc(len + 1);
-    snprintf(defaultfile, len + 1, "%s/dsda-doom.cfg", configdir);
+    snprintf(defaultfile, len + 1, "%s/nexusdoom.cfg", configdir);
   }
 
   lprintf(LO_DEBUG, " default file: %s\n", defaultfile);

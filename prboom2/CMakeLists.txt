@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Setup dependencies options before `project()` so vcpkg features can be used
 include(DsdaDepsSetup)
 
-project("dsda-doom" VERSION 0.29.4)
+project("nexusdoom" VERSION 1.0.0)
 
 set(dsda_is_top_project FALSE)
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -25,8 +25,8 @@ if(VCPKG_TOOLCHAIN)
     set(ENV{PKG_CONFIG_PATH} "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/pkgconfig")
 endif()
 
-set(PROJECT_TARNAME "dsda-doom")
-set(WAD_DATA "dsda-doom.wad")
+set(PROJECT_TARNAME "nexusdoom")
+set(WAD_DATA "nexusdoom.wad")
 set(PROJECT_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
 
 include(DsdaOptions)
@@ -52,7 +52,7 @@ if(DSDA_BUILD_PWAD_WITH_EXTERNAL_PROJECT)
         CACHE FILEPATH "Toolchain file to build host tools with"
     )
     include(ExternalProject)
-    ExternalProject_Add(dsda-doom-wad
+    ExternalProject_Add(nexusdoom-wad
         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data"
         ${DSDA_EXTERNAL_PROJECT_VS_ARGS}
         CMAKE_CACHE_ARGS
