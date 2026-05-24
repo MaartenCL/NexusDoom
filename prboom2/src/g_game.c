@@ -516,11 +516,8 @@ void G_BuildTiccmd(ticcmd_t* cmd)
   int forward;
   int side;
   int newweapon;                                          // phares
-  dboolean strict_input;
 
   dsda_pclass_t *player_class = &pclass[players[consoleplayer].pclass];
-
-  strict_input = dsda_StrictMode();
 
   G_SetSpeed(false);
   dsda_EvaluateSkipModeBuildTiccmd();
@@ -554,10 +551,7 @@ void G_BuildTiccmd(ticcmd_t* cmd)
   if (dsda_InputTickActivated(dsda_input_reverse))
   {
     if (!strafe) {
-      if (strict_input)
-        doom_printf("180 key disabled by strict mode");
-      else
-        cmd->angleturn += QUICKREVERSE;
+      cmd->angleturn += QUICKREVERSE;
     }
   }
 
@@ -1121,20 +1115,18 @@ void G_BuildTiccmd(ticcmd_t* cmd)
 
   dsda_PopExCmdQueue(cmd);
 
-  if (!dsda_StrictMode()) {
-    if (leveltime == 0 && totalleveltimes == 0) {
-      dsda_arg_t* arg;
+  if (leveltime == 0 && totalleveltimes == 0) {
+    dsda_arg_t* arg;
 
-      arg = dsda_Arg(dsda_arg_first_input);
-      if (arg->found) {
-        dsda_TrackFeature(uf_buildzero);
+    arg = dsda_Arg(dsda_arg_first_input);
+    if (arg->found) {
+      dsda_TrackFeature(uf_buildzero);
 
-        cmd->forwardmove = (signed char) arg->value.v_int_array[0];
-        cmd->sidemove = (signed char) arg->value.v_int_array[1];
-        cmd->angleturn = (signed short) (arg->value.v_int_array[2] << 8);
+      cmd->forwardmove = (signed char) arg->value.v_int_array[0];
+      cmd->sidemove = (signed char) arg->value.v_int_array[1];
+      cmd->angleturn = (signed short) (arg->value.v_int_array[2] << 8);
 
-        dsda_JoinDemoCmd(cmd);
-      }
+      dsda_JoinDemoCmd(cmd);
     }
   }
 }
@@ -1440,7 +1432,7 @@ dboolean G_Responder (event_t* ev)
     case ev_move_analog:
       dsda_WatchGameControllerEvent();
 
-      left_analog_x = dsda_StrictMode() ? lroundf(ev->data1.f * 0.5f) * 2 : ev->data1.f;
+      left_analog_x = ev->data1.f;
       left_analog_y = ev->data2.f;
       return true;    // eat events
 

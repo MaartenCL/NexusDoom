@@ -1593,11 +1593,6 @@ const char* dsda_HackStringConfig(dsda_config_identifier_t id, const char* value
 }
 
 int dsda_IntConfig(dsda_config_identifier_t id) {
-  dboolean dsda_StrictMode(void);
-
-  if (dsda_config[id].flags & CONF_STRICT && dsda_StrictMode())
-    return dsda_config[id].strict_value;
-
   return dsda_config[id].transient_value.v_int;
 }
 
