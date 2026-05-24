@@ -111,6 +111,8 @@
 #include "dsda/zipfile.h"
 #include "dsda/gl/render_scale.h"
 
+#include "net_session.h"
+
 #include "heretic/mn_menu.h"
 #include "heretic/sb_bar.h"
 
@@ -274,7 +276,7 @@ static void D_Wipe(void)
     return;
   }
 
-  if (dsda_GameSpeed() != 100 && dsda_WipeAtFullSpeed())
+  if (dsda_GameSpeed() != 100 && dsda_WipeAtFullSpeed() && !net_session_active())
   {
     old_game_speed = dsda_GameSpeed();
     dsda_UpdateGameSpeed(100);

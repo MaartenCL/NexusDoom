@@ -74,8 +74,8 @@ int net_read_ticcmd(const unsigned char *buf, ticcmd_t *cmd)
   return NET_TICCMD_SIZE;
 }
 
-// net_setup_t serialization: 9 int32 fields = 36 bytes
-#define NET_SETUP_SIZE (9 * 4)
+// net_setup_t serialization: 10 int32 fields = 40 bytes
+#define NET_SETUP_SIZE (10 * 4)
 
 int net_write_setup(unsigned char *buf, const net_setup_t *setup)
 {
@@ -88,20 +88,22 @@ int net_write_setup(unsigned char *buf, const net_setup_t *setup)
   write_i32(&buf[24], setup->fast);
   write_i32(&buf[28], setup->respawn);
   write_i32(&buf[32], setup->longtics);
+  write_i32(&buf[36], setup->game_speed);
   return NET_SETUP_SIZE;
 }
 
 int net_read_setup(const unsigned char *buf, net_setup_t *setup)
 {
-  setup->skill      = read_i32(&buf[0]);
-  setup->episode    = read_i32(&buf[4]);
-  setup->map        = read_i32(&buf[8]);
-  setup->complevel  = read_i32(&buf[12]);
-  setup->deathmatch = read_i32(&buf[16]);
-  setup->nomonsters = read_i32(&buf[20]);
-  setup->fast       = read_i32(&buf[24]);
-  setup->respawn    = read_i32(&buf[28]);
-  setup->longtics   = read_i32(&buf[32]);
+  setup->skill       = read_i32(&buf[0]);
+  setup->episode     = read_i32(&buf[4]);
+  setup->map         = read_i32(&buf[8]);
+  setup->complevel   = read_i32(&buf[12]);
+  setup->deathmatch  = read_i32(&buf[16]);
+  setup->nomonsters  = read_i32(&buf[20]);
+  setup->fast        = read_i32(&buf[24]);
+  setup->respawn     = read_i32(&buf[28]);
+  setup->longtics    = read_i32(&buf[32]);
+  setup->game_speed  = read_i32(&buf[36]);
   return NET_SETUP_SIZE;
 }
 

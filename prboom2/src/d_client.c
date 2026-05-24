@@ -129,11 +129,16 @@ static void NetResetChecksumState(void)
   net_diag_last_remote_checksum = 0;
 }
 
+// Timestamp (microseconds from dsda_timer_realtime) at which the next tic is
+// allowed to fire. Zero means "not yet armed" — gate initialises on first use.
+static unsigned long long net_pacing_next_tic_us = 0;
+
 // Purge all per-session multiplayer state. Called on game init and on every
 // disconnect so that a reconnect (or future rewind) starts with a clean slate.
 void NetResetState(void)
 {
   remote_maketic = 0;
+  net_pacing_next_tic_us = 0;
   NetResetChecksumState();
 }
 
@@ -577,6 +582,46 @@ static int NetRecvRemoteTic(void)
 //  -1  — disconnected (session torn down, caller should bail)
 static int NetRunOneTic(void)
 {
+  // ---------------------------------------------------------------------------
+  // Pacing gate: throttle the lockstep loop to the synchronized game_speed.
+  //
+  // We measure real-world elapsed time between tic generations entirely within
+  // this function, touching no global time accumulator. This avoids the
+  // catch-up burst that occurs when the global clock is compared against wall
+  // time accumulated during the handshake/connection phase.
+  // ---------------------------------------------------------------------------
+  {
+    int speed = dsda_GameSpeed();
+    unsigned long long now = dsda_ElapsedTime(dsda_timer_realtime);
+    unsigned long long interval_us;
+
+    if (speed <= 0) speed = 100;
+    // interval_us = 1 / (TICRATE * speed/100)  expressed in microseconds
+    interval_us = (unsigned long long)1000000ULL * 100 / (35 * speed);
+
+    if (net_pacing_next_tic_us == 0)
+      net_pacing_next_tic_us = now; // first tic: arm the gate without waiting
+
+    if (now < net_pacing_next_tic_us)
+    {
+      // Not yet time for the next tic. Sleep in small chunks so input and
+      // menus stay responsive, then yield to the caller.
+      unsigned long long wait_us = net_pacing_next_tic_us - now;
+      if (wait_us > 5000) wait_us = 5000;
+      I_uSleep((unsigned long)wait_us);
+      M_Ticker();
+      return 0;
+    }
+
+    // Advance the schedule by exactly one interval from the *planned* time so
+    // the cadence stays accurate. If we have fallen more than one interval
+    // behind (e.g. after a remote stall or the initial handshake), clamp to
+    // avoid a burst of back-to-back tics to "catch up".
+    net_pacing_next_tic_us += interval_us;
+    if (net_pacing_next_tic_us < now)
+      net_pacing_next_tic_us = now + interval_us;
+  }
+
   I_StartTic();
 
   // Build local ticcmd and send to remote

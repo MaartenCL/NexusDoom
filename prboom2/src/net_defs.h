@@ -44,6 +44,7 @@ typedef struct {
   int fast;
   int respawn;
   int longtics;
+  int game_speed; // host's -game_speed value (percent, default 100)
 } net_setup_t;
 
 // Ticcmd message: sequence number + ticcmd

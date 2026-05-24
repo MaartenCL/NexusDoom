@@ -23,6 +23,7 @@
 #include "doomstat.h"
 #include "dsda/global.h"
 #include "dsda/demo.h"
+#include "dsda/settings.h"
 #include "i_main.h"
 #include "i_system.h"
 #include "lprintf.h"
@@ -82,6 +83,7 @@ static void net_session_build_setup(net_setup_t *setup)
   setup->fast       = fastparm;
   setup->respawn    = respawnparm;
   setup->longtics   = 0;
+  setup->game_speed = dsda_GameSpeed();
 }
 
 static void net_session_apply_setup(const net_setup_t *setup)
@@ -98,6 +100,9 @@ static void net_session_apply_setup(const net_setup_t *setup)
   nomonsters    = setup->nomonsters;
   fastparm      = setup->fast;
   respawnparm   = setup->respawn;
+  // Apply host's game speed. Do NOT call dsda_ResetTimeFunctions() here;
+  // the MP pacing gate in NetRunOneTic owns throttling for the net loop.
+  dsda_UpdateGameSpeed(setup->game_speed);
 }
 
 int net_session_host_start(int port)
