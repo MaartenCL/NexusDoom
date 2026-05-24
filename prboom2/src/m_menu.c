@@ -100,6 +100,7 @@
 #include "dsda/text_color.h"
 #include "dsda/utility.h"
 #include "dsda/wad_stats.h"
+#include "net_session.h"
 
 #include "heretic/mn_menu.h"
 #include "heretic/sb_bar.h"
@@ -5334,31 +5335,25 @@ static dboolean M_InactiveMenuResponder(int ch, int action, event_t* ev)
   }
 
   //e6y
-  if (dsda_InputActivated(dsda_input_speed_default))
+  if (dsda_InputActivated(dsda_input_speed_default) && (!net_session_active() || net_session.is_host))
   {
     int value = StepwiseSum(dsda_GameSpeed(), 0, 3, 10000, 100);
     dsda_UpdateGameSpeed(value);
     doom_printf("Game Speed %d", value);
-    // Don't eat the keypress in this case.
-    // return true;
   }
 
-  if (dsda_InputActivated(dsda_input_speed_up))
+  if (dsda_InputActivated(dsda_input_speed_up) && (!net_session_active() || net_session.is_host))
   {
     int value = StepwiseSum(dsda_GameSpeed(), 1, 3, 10000, 100);
     dsda_UpdateGameSpeed(value);
     doom_printf("Game Speed %d", value);
-    // Don't eat the keypress in this case.
-    // return true;
   }
 
-  if (dsda_InputActivated(dsda_input_speed_down))
+  if (dsda_InputActivated(dsda_input_speed_down) && (!net_session_active() || net_session.is_host))
   {
     int value = StepwiseSum(dsda_GameSpeed(), -1, 3, 10000, 100);
     dsda_UpdateGameSpeed(value);
     doom_printf("Game Speed %d", value);
-    // Don't eat the keypress in this case.
-    // return true;
   }
 
   // Pop-up Main menu?

@@ -55,6 +55,7 @@ int net_write_ticcmd(unsigned char *buf, const ticcmd_t *cmd)
   buf[8] = cmd->ex.save_slot;
   buf[9] = cmd->ex.load_slot;
   write_i16(&buf[10], cmd->ex.look);
+  write_i16(&buf[12], (int)cmd->ex.net_game_speed);
   return NET_TICCMD_SIZE;
 }
 
@@ -71,6 +72,7 @@ int net_read_ticcmd(const unsigned char *buf, ticcmd_t *cmd)
   cmd->ex.save_slot = buf[8];
   cmd->ex.load_slot = buf[9];
   cmd->ex.look = (signed short)read_i16(&buf[10]);
+  cmd->ex.net_game_speed = (unsigned short)read_i16(&buf[12]);
   return NET_TICCMD_SIZE;
 }
 

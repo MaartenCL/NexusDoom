@@ -17,7 +17,7 @@
 #include "d_ticcmd.h"
 
 #define NET_DEFAULT_PORT 26101
-#define NET_TICCMD_SIZE  12
+#define NET_TICCMD_SIZE  14
 #define NET_CHECKSUM_SIZE 8
 
 // Wire protocol message types

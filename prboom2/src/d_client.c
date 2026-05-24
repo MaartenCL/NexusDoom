@@ -486,6 +486,12 @@ static void NetUpdate(void)
   // Build local ticcmd
   G_BuildTiccmd(&local_cmds[local][maketic % BACKUPTICS]);
 
+  // Host stamps its authoritative game_speed into every ticcmd so the client
+  // can update its pacing gate on the exact same execution tic.
+  if (net_session.is_host)
+    local_cmds[local][maketic % BACKUPTICS].ex.net_game_speed =
+        (unsigned short)dsda_GameSpeed();
+
   // Send to remote
   net_write_ticcmd(buf, &local_cmds[local][maketic % BACKUPTICS]);
   if (net_send_packet(net_session.socket, NET_MSG_TICCMD, buf, NET_TICCMD_SIZE) != 0) {
@@ -645,6 +651,20 @@ static int NetRunOneTic(void)
   }
 
   // Both players have ticcmds for gametic — advance one tic
+
+  // Synchronize game_speed from the host's ticcmd. Both peers apply this on
+  // the same execution tic (host and client both possess the host's ticcmd for
+  // gametic at this point), so their pacing gates update simultaneously.
+  {
+    int host = net_session.is_host ? net_session.local_player
+                                   : net_session.remote_player;
+    unsigned short synced_speed =
+        local_cmds[host][gametic % BACKUPTICS].ex.net_game_speed;
+
+    if (synced_speed > 0 && (int)synced_speed != dsda_GameSpeed())
+      dsda_UpdateGameSpeed((int)synced_speed);
+  }
+
   if (advancedemo)
     D_DoAdvanceDemo();
   M_Ticker();
