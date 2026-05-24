@@ -289,10 +289,6 @@ static void dsda_MarkSaveSlotUsed(int slot) {
   demo_save_slots[demo_save_slot_count - 1] = slot;
 }
 
-int dsda_AllowAnyMenuSave(void) {
-  return !dsda_StrictMode() || dsda_AllowCasualExCmdFeatures();
-}
-
 int dsda_AllowMenuLoad(int slot) {
   int i;
 

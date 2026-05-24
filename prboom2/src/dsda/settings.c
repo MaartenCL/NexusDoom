@@ -117,10 +117,6 @@ int dsda_CompatibilityLevel(void) {
   return UNSPECIFIED_COMPLEVEL;
 }
 
-void dsda_SetTas(dboolean t) {
-  dsda_UpdateIntConfig(dsda_config_strict_mode, !t, true);
-}
-
 int dsda_ViewBob(void) {
   return dsda_IntConfig(dsda_config_viewbob);
 }
@@ -143,10 +139,6 @@ dboolean dsda_MouseLook(void) {
 
 dboolean dsda_VertMouse(void) {
   return dsda_IntConfig(dsda_config_vertmouse);
-}
-
-dboolean dsda_StrictMode(void) {
-  return dsda_IntConfig(dsda_config_strict_mode) && demorecording;
 }
 
 dboolean dsda_MuteSfx(void) {
@@ -262,8 +254,6 @@ int dsda_ShowAliveMonsters(void) {
 int dsda_reveal_map;
 
 int dsda_RevealAutomap(void) {
-  if (dsda_StrictMode()) return 0;
-
   return dsda_reveal_map;
 }
 
@@ -304,14 +294,6 @@ dboolean dsda_SkipWipe(void) {
 
 static dboolean game_controller_used;
 static dboolean mouse_used;
-
-dboolean dsda_AllowGameController(void) {
-  return !dsda_StrictMode() || !mouse_used;
-}
-
-dboolean dsda_AllowMouse(void) {
-  return !dsda_StrictMode() || !game_controller_used;
-}
 
 void dsda_WatchGameControllerEvent(void) {
   game_controller_used = true;

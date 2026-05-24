@@ -41,6 +41,7 @@ typedef struct {
   byte save_slot;
   byte load_slot;
   signed short look;
+  unsigned short net_game_speed; // wire-only: host's game_speed for this tic (0 = no change)
 } excmd_t;
 
 /* The data sampled per tick (single player)

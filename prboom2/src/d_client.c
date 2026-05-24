@@ -65,6 +65,8 @@
 #include "lprintf.h"
 #include "e6y.h"
 
+#include "m_fixed.h"
+
 #include "dsda/args.h"
 #include "dsda/settings.h"
 #include "dsda/time.h"
@@ -129,11 +131,26 @@ static void NetResetChecksumState(void)
   net_diag_last_remote_checksum = 0;
 }
 
+// Timestamp (microseconds from dsda_timer_realtime) at which the next tic is
+// allowed to fire. Zero means "not yet armed" — gate initialises on first use.
+static unsigned long long net_pacing_next_tic_us = 0;
+
+// Network-derived interpolation fraction for the renderer. Updated each frame
+// by the pacing gate so I_GetTimeFrac() can bypass the wall clock in MP.
+static fixed_t net_interpolation_frac = FRACUNIT;
+
+fixed_t NetGetTimeFrac(void)
+{
+  return net_interpolation_frac;
+}
+
 // Purge all per-session multiplayer state. Called on game init and on every
 // disconnect so that a reconnect (or future rewind) starts with a clean slate.
 void NetResetState(void)
 {
   remote_maketic = 0;
+  net_pacing_next_tic_us = 0;
+  net_interpolation_frac = FRACUNIT;
   NetResetChecksumState();
 }
 
@@ -497,6 +514,12 @@ static void NetUpdate(void)
   // Build local ticcmd
   G_BuildTiccmd(&local_cmds[local][maketic % BACKUPTICS]);
 
+  // Host stamps its authoritative game_speed into every ticcmd so the client
+  // can update its pacing gate on the exact same execution tic.
+  if (net_session.is_host)
+    local_cmds[local][maketic % BACKUPTICS].ex.net_game_speed =
+        (unsigned short)dsda_GameSpeed();
+
   // Send to remote
   net_write_ticcmd(buf, &local_cmds[local][maketic % BACKUPTICS]);
   if (net_send_packet(net_session.socket, NET_MSG_TICCMD, buf, NET_TICCMD_SIZE) != 0) {
@@ -593,6 +616,57 @@ static int NetRecvRemoteTic(void)
 //  -1  — disconnected (session torn down, caller should bail)
 static int NetRunOneTic(void)
 {
+  // ---------------------------------------------------------------------------
+  // Pacing gate: throttle the lockstep loop to the synchronized game_speed.
+  //
+  // We measure real-world elapsed time between tic generations entirely within
+  // this function, touching no global time accumulator. This avoids the
+  // catch-up burst that occurs when the global clock is compared against wall
+  // time accumulated during the handshake/connection phase.
+  // ---------------------------------------------------------------------------
+  {
+    int speed = dsda_GameSpeed();
+    unsigned long long now = dsda_ElapsedTime(dsda_timer_realtime);
+    unsigned long long interval_us;
+
+    if (speed <= 0) speed = 100;
+    // interval_us = 1 / (TICRATE * speed/100)  expressed in microseconds
+    interval_us = (unsigned long long)1000000ULL * 100 / (35 * speed);
+
+    if (net_pacing_next_tic_us == 0)
+      net_pacing_next_tic_us = now; // first tic: arm the gate without waiting
+
+    if (now < net_pacing_next_tic_us)
+    {
+      // Not yet time for the next tic. Compute the interpolation fraction
+      // representing how far we are through the current interval.
+      unsigned long long elapsed, wait_us;
+      fixed_t frac;
+
+      elapsed = now - (net_pacing_next_tic_us - interval_us);
+      frac = (fixed_t)(elapsed * FRACUNIT / interval_us);
+      net_interpolation_frac = BETWEEN(0, FRACUNIT, frac);
+
+      // Sleep in small chunks so input and menus stay responsive, then yield.
+      wait_us = net_pacing_next_tic_us - now;
+      if (wait_us > 5000) wait_us = 5000;
+      I_uSleep((unsigned long)wait_us);
+      M_Ticker();
+      return 0;
+    }
+
+    // Tic is about to fire — fraction is complete.
+    net_interpolation_frac = FRACUNIT;
+
+    // Advance the schedule by exactly one interval from the *planned* time so
+    // the cadence stays accurate. If we have fallen more than one interval
+    // behind (e.g. after a remote stall or the initial handshake), clamp to
+    // avoid a burst of back-to-back tics to "catch up".
+    net_pacing_next_tic_us += interval_us;
+    if (net_pacing_next_tic_us < now)
+      net_pacing_next_tic_us = now + interval_us;
+  }
+
   I_StartTic();
 
   // Build local ticcmd and send to remote
@@ -616,6 +690,20 @@ static int NetRunOneTic(void)
   }
 
   // Both players have ticcmds for gametic — advance one tic
+
+  // Synchronize game_speed from the host's ticcmd. Both peers apply this on
+  // the same execution tic (host and client both possess the host's ticcmd for
+  // gametic at this point), so their pacing gates update simultaneously.
+  {
+    int host = net_session.is_host ? net_session.local_player
+                                   : net_session.remote_player;
+    unsigned short synced_speed =
+        local_cmds[host][gametic % BACKUPTICS].ex.net_game_speed;
+
+    if (synced_speed > 0 && (int)synced_speed != dsda_GameSpeed())
+      dsda_UpdateGameSpeed((int)synced_speed);
+  }
+
   if (advancedemo)
     D_DoAdvanceDemo();
   M_Ticker();
@@ -624,6 +712,12 @@ static int NetRunOneTic(void)
   if (!net_session_active())
     return -1;
   gametic++;
+  // Reset to 0 so the first rendered frame after the tic fires starts at the
+  // beginning of the new interval (frac=0 = prev_viewangle = pre-turn state).
+  // This mirrors the vanilla wall-clock path where dsda_TickElapsedTime()
+  // returns ~0 immediately after a tic, giving visual continuity without the
+  // FRACUNIT-then-near-0 snap that caused the one-frame overshoot.
+  net_interpolation_frac = 0;
   NetUpdateOutOfSyncMessage();
   return 1;
 }

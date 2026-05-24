@@ -17,7 +17,7 @@
 #include "d_ticcmd.h"
 
 #define NET_DEFAULT_PORT 26101
-#define NET_TICCMD_SIZE  12
+#define NET_TICCMD_SIZE  14
 #define NET_CHECKSUM_SIZE 8
 
 // Wire protocol message types
@@ -44,6 +44,7 @@ typedef struct {
   int fast;
   int respawn;
   int longtics;
+  int game_speed; // host's -game_speed value (percent, default 100)
 } net_setup_t;
 
 // Ticcmd message: sequence number + ticcmd

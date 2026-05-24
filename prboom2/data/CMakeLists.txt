@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8...4.0)
-project(dsda-doom-wad
+project(nexusdoom-wad
     LANGUAGES C
 )
 
@@ -441,7 +441,7 @@ add_custom_command(
     VERBATIM
 )
 
-add_custom_target(dsda-doom-wad 
+add_custom_target(nexusdoom-wad 
     ALL
     DEPENDS ${WAD_DATA_PATH}
 )

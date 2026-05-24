@@ -87,6 +87,9 @@
 #include "dsda/time.h"
 #include "dsda/utility.h"
 
+#include "d_net.h"
+#include "net_session.h"
+
 void I_uSleep(unsigned long usecs)
 {
     SDL_Delay(usecs/1000);
@@ -121,6 +124,12 @@ int interpolation_method;
 fixed_t I_GetTimeFrac (void)
 {
   fixed_t frac;
+
+  // In multiplayer, use the network pacing gate's fraction directly.
+  // The global wall clock desyncs from the lockstep cadence after speed
+  // changes or thread freezes, so we bypass it entirely.
+  if (net_session_active())
+    return NetGetTimeFrac();
 
   if (!movement_smooth)
   {
@@ -165,7 +174,7 @@ unsigned long I_GetRandomTimeSeed(void)
  */
 const char* I_GetVersionString(char* buf, size_t sz)
 {
-  snprintf(buf, sz, "%s v%s (https://github.com/kraflab/dsda-doom/)", PROJECT_NAME, PROJECT_VERSION);
+  snprintf(buf, sz, "%s v%s (https://github.com/MaartenCL/NexusDoom)", PROJECT_NAME, PROJECT_VERSION);
   return buf;
 }
 
@@ -380,9 +389,9 @@ const char *I_ConfigDir(void)
       Z_Free(base);
 
 #ifdef __APPLE__
-      base = dsda_ConcatDir(home, "Library/Application Support/dsda-doom");
+      base = dsda_ConcatDir(home, "Library/Application Support/nexusdoom");
 #else
-      base = dsda_ConcatDir(I_GetXDGDataHome(), "dsda-doom");
+      base = dsda_ConcatDir(I_GetXDGDataHome(), "nexusdoom");
 #endif
     }
 

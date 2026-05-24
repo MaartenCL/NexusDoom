@@ -2521,11 +2521,6 @@ static dboolean dsda_AuthorizeCommand(console_command_entry_t* entry) {
     return false;
   }
 
-  if (!(entry->flags & CF_STRICT) && dsda_StrictMode()) {
-    dsda_AddConsoleMessage("command not allowed in strict mode");
-    return false;
-  }
-
   if (gamestate != GS_LEVEL) {
     dsda_AddConsoleMessage("command only allowed during levels");
     return false;

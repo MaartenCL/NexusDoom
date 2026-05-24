@@ -24,14 +24,12 @@
 
 void dsda_InitSettings(void);
 int dsda_CompatibilityLevel(void);
-void dsda_SetTas(dboolean t);
 int dsda_ViewBob(void);
 int dsda_WeaponBob(void);
 dboolean dsda_ShowMessages(void);
 dboolean dsda_AutoRun(void);
 dboolean dsda_MouseLook(void);
 dboolean dsda_VertMouse(void);
-dboolean dsda_StrictMode(void);
 dboolean dsda_MuteSfx(void);
 dboolean dsda_MuteMusic(void);
 dboolean dsda_ProcessCheatCodes(void);
@@ -71,8 +69,6 @@ void dsda_SkipNextWipe(void);
 dboolean dsda_PendingSkipWipe(void);
 dboolean dsda_SkipWipe(void);
 
-dboolean dsda_AllowGameController(void);
-dboolean dsda_AllowMouse(void);
 void dsda_WatchGameControllerEvent(void);
 void dsda_WatchMouseEvent(void);
 void dsda_LiftInputRestrictions(void);
