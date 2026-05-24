@@ -35,6 +35,7 @@
 #define __D_NET__
 
 #include "d_player.h"
+#include "m_fixed.h"
 
 // Create any new ticcmds
 void FakeNetUpdate (void);
@@ -54,5 +55,9 @@ void NetSingleTic(void);
 // Purge all per-session multiplayer state (checksums, loop counters).
 // Called on disconnect and at game init so reconnects start with a clean slate.
 void NetResetState(void);
+
+// Return the network pacing gate's interpolation fraction for the renderer.
+// Only meaningful when net_session_active() is true.
+fixed_t NetGetTimeFrac(void);
 
 #endif

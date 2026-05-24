@@ -65,6 +65,8 @@
 #include "lprintf.h"
 #include "e6y.h"
 
+#include "m_fixed.h"
+
 #include "dsda/args.h"
 #include "dsda/settings.h"
 #include "dsda/time.h"
@@ -133,12 +135,22 @@ static void NetResetChecksumState(void)
 // allowed to fire. Zero means "not yet armed" — gate initialises on first use.
 static unsigned long long net_pacing_next_tic_us = 0;
 
+// Network-derived interpolation fraction for the renderer. Updated each frame
+// by the pacing gate so I_GetTimeFrac() can bypass the wall clock in MP.
+static fixed_t net_interpolation_frac = FRACUNIT;
+
+fixed_t NetGetTimeFrac(void)
+{
+  return net_interpolation_frac;
+}
+
 // Purge all per-session multiplayer state. Called on game init and on every
 // disconnect so that a reconnect (or future rewind) starts with a clean slate.
 void NetResetState(void)
 {
   remote_maketic = 0;
   net_pacing_next_tic_us = 0;
+  net_interpolation_frac = FRACUNIT;
   NetResetChecksumState();
 }
 
@@ -610,14 +622,25 @@ static int NetRunOneTic(void)
 
     if (now < net_pacing_next_tic_us)
     {
-      // Not yet time for the next tic. Sleep in small chunks so input and
-      // menus stay responsive, then yield to the caller.
-      unsigned long long wait_us = net_pacing_next_tic_us - now;
+      // Not yet time for the next tic. Compute the interpolation fraction
+      // representing how far we are through the current interval.
+      unsigned long long elapsed, wait_us;
+      fixed_t frac;
+
+      elapsed = now - (net_pacing_next_tic_us - interval_us);
+      frac = (fixed_t)(elapsed * FRACUNIT / interval_us);
+      net_interpolation_frac = BETWEEN(0, FRACUNIT, frac);
+
+      // Sleep in small chunks so input and menus stay responsive, then yield.
+      wait_us = net_pacing_next_tic_us - now;
       if (wait_us > 5000) wait_us = 5000;
       I_uSleep((unsigned long)wait_us);
       M_Ticker();
       return 0;
     }
+
+    // Tic is about to fire — fraction is complete.
+    net_interpolation_frac = FRACUNIT;
 
     // Advance the schedule by exactly one interval from the *planned* time so
     // the cadence stays accurate. If we have fallen more than one interval
@@ -673,6 +696,12 @@ static int NetRunOneTic(void)
   if (!net_session_active())
     return -1;
   gametic++;
+  // Reset to 0 so the first rendered frame after the tic fires starts at the
+  // beginning of the new interval (frac=0 = prev_viewangle = pre-turn state).
+  // This mirrors the vanilla wall-clock path where dsda_TickElapsedTime()
+  // returns ~0 immediately after a tic, giving visual continuity without the
+  // FRACUNIT-then-near-0 snap that caused the one-frame overshoot.
+  net_interpolation_frac = 0;
   NetUpdateOutOfSyncMessage();
   return 1;
 }

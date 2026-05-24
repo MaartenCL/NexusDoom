@@ -1,1 +1,1 @@
-We are modifying DSDA-Doom to create NexusDoom, a dedicated multiplayer TAS engine.
+We are building NexusDoom, a Doom source port dedicated for multiplayer TAS based on DSDA-Doom.

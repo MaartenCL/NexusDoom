@@ -87,6 +87,9 @@
 #include "dsda/time.h"
 #include "dsda/utility.h"
 
+#include "d_net.h"
+#include "net_session.h"
+
 void I_uSleep(unsigned long usecs)
 {
     SDL_Delay(usecs/1000);
@@ -121,6 +124,12 @@ int interpolation_method;
 fixed_t I_GetTimeFrac (void)
 {
   fixed_t frac;
+
+  // In multiplayer, use the network pacing gate's fraction directly.
+  // The global wall clock desyncs from the lockstep cadence after speed
+  // changes or thread freezes, so we bypass it entirely.
+  if (net_session_active())
+    return NetGetTimeFrac();
 
   if (!movement_smooth)
   {
