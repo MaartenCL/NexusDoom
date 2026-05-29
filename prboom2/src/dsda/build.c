@@ -389,6 +389,10 @@ static void resetCmd(void) {
   memset(&build_cmd, 0, sizeof(build_cmd));
 }
 
+dboolean dsda_AllowBuilding(void) {
+  return !dsda_StrictMode();
+}
+
 dboolean dsda_BuildMode(void) {
   return build_mode;
 }
@@ -477,6 +481,9 @@ void dsda_RefreshBuildMode(void) {
 }
 
 dboolean dsda_BuildResponder(event_t* ev) {
+  if (!dsda_AllowBuilding())
+    return false;
+
   if (dsda_InputActivated(dsda_input_build)) {
     if (dsda_BuildMode())
       dsda_ExitBuildMode();

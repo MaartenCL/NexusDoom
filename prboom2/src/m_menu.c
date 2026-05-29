@@ -1184,6 +1184,15 @@ void M_SaveGame (int choice)
   if (gamestate != GS_LEVEL)
     return;
 
+  if (!dsda_AllowAnyMenuSave())
+  {
+    M_StartMessage(
+      "you can't save the game\n"
+      "under these conditions!\n\n"PRESSKEY,
+      NULL, false); // killough 5/26/98: not externalized
+    return;
+  }
+
   M_SetupNextMenu(&SaveDef);
   current_page = current_save_page;
   itemOn = current_save_item;
@@ -1448,6 +1457,15 @@ static void M_QuickSave(void)
 
   if (gamestate != GS_LEVEL)
     return;
+
+  if (!dsda_AllowAnyMenuSave())
+  {
+    M_StartMessage(
+      "you can't save the game\n"
+      "under these conditions!\n\n"PRESSKEY,
+      NULL, false); // killough 5/26/98: not externalized
+    return;
+  }
 
   // Move all quicksaves downwards to make space for a new one
   M_DeleteSaveGame(g_menu_save_page_size - 1);
@@ -1806,6 +1824,7 @@ static void M_DrawItem(const setup_menu_t* s, int y)
   char *p, *t;
   int w = 0;
   int color =
+    dsda_StrictMode() && dsda_IsStrictConfig(s->config_id) ? cr_label + CR_DARKEN :
     flags & (S_SELECT|S_TC_SEL) ? cr_label_edit :
     flags & S_HILITE ? cr_label_highlight :
     flags & (S_TITLE|S_NEXT|S_PREV) ? cr_title :
@@ -1857,6 +1876,7 @@ static void M_DrawSetting(const setup_menu_t* s, int y)
   // depending on whether the item is a text string or not.
 
   color =
+    dsda_StrictMode() && dsda_IsStrictConfig(s->config_id) ? cr_value + CR_DARKEN :
     flags & S_SELECT ? cr_value_edit :
     flags & S_HILITE ? cr_value_highlight :
     cr_value;
@@ -1890,6 +1910,8 @@ static void M_DrawSetting(const setup_menu_t* s, int y)
       if (flags & S_CRITEM)
       {
         color = value;
+        if (dsda_StrictMode() && dsda_IsStrictConfig(s->config_id))
+          color += CR_DARKEN;
       }
     }
     if (s == current_setup_menu + set_menu_itemon && whichSkull && !setup_select)
@@ -2560,6 +2582,7 @@ setup_menu_t keys_misc_settings[] =
 setup_menu_t keys_toggles_settings[] = {
   { "Command Display", S_INPUT, m_scrn, KB_X, 0, dsda_input_command_display },
   { "Coordinate Display", S_INPUT, m_scrn, KB_X, 0, dsda_input_coordinate_display },
+  { "Strict Mode", S_INPUT, m_scrn, KB_X, 0, dsda_input_strict_mode },
   { "Extended HUD", S_INPUT, m_scrn, KB_X, 0, dsda_input_exhud },
   { "SFX", S_INPUT, m_scrn, KB_X, 0, dsda_input_mute_sfx },
   { "Music", S_INPUT, m_scrn, KB_X, 0, dsda_input_mute_music },
@@ -2866,6 +2889,8 @@ setup_menu_t demos_options_settings[] =  // Demos Settings screen
 
 setup_menu_t demos_tas_settings[] =
 {
+  { "Strict Mode", S_YESNO, m_conf, DM_X, dsda_config_strict_mode },
+  EMPTY_LINE,
   { "Wipe At Full Speed", S_YESNO, m_conf, DM_X, dsda_config_wipe_at_full_speed },
   { "Show Command Display", S_YESNO, m_conf, DM_X, dsda_config_command_display },
   { "Command History", S_NUM, m_conf, DM_X, dsda_config_command_history_size },
@@ -4472,6 +4497,7 @@ typedef struct {
 } toggle_input_t;
 
 static toggle_input_t toggle_inputs[] = {
+  { dsda_input_strict_mode, dsda_config_strict_mode, true, false, "Strict Mode" },
   { dsda_input_novert, dsda_config_vertmouse, true, false, "Vertical Mouse Movement", .play_sound = true },
   { dsda_input_mlook, dsda_config_freelook, true, true, "Free Look", .play_sound = true },
   { dsda_input_autorun, dsda_config_autorun, true, true, "Auto Run", .play_sound = true },
@@ -4491,7 +4517,10 @@ static void M_HandleToggles(void)
   toggle_input_t* toggle;
 
   for (toggle = toggle_inputs; toggle->input != -1; toggle++) {
-    if (dsda_InputActivated(toggle->input))
+    if (
+      dsda_InputActivated(toggle->input) &&
+      (toggle->allowed_in_strict_mode || !dsda_StrictMode())
+    )
     {
       int value;
 
@@ -5081,6 +5110,9 @@ static dboolean M_SetupNavigationResponder(int ch, int action, event_t* ev)
   {
     int flags = ptr1->m_flags;
 
+    if (dsda_StrictMode() && dsda_IsStrictConfig(ptr1->config_id))
+      return true;
+
     // You've selected an item to change. Highlight it, post a new
     // message about what to do, and get ready to process the
     // change.
@@ -5335,21 +5367,22 @@ static dboolean M_InactiveMenuResponder(int ch, int action, event_t* ev)
   }
 
   //e6y
-  if (dsda_InputActivated(dsda_input_speed_default) && (!net_session_active() || net_session.is_host))
+  if (dsda_InputActivated(dsda_input_speed_default) && !dsda_StrictMode() && (!net_session_active() || net_session.is_host))
   {
     int value = StepwiseSum(dsda_GameSpeed(), 0, 3, 10000, 100);
     dsda_UpdateGameSpeed(value);
     doom_printf("Game Speed %d", value);
   }
 
-  if (dsda_InputActivated(dsda_input_speed_up) && (!net_session_active() || net_session.is_host))
+  if (dsda_InputActivated(dsda_input_speed_up) && !dsda_StrictMode() && (!net_session_active() || net_session.is_host))
   {
     int value = StepwiseSum(dsda_GameSpeed(), 1, 3, 10000, 100);
     dsda_UpdateGameSpeed(value);
     doom_printf("Game Speed %d", value);
   }
 
-  if (dsda_InputActivated(dsda_input_speed_down) && (!net_session_active() || net_session.is_host))
+  if (dsda_InputActivated(dsda_input_speed_down) && !dsda_StrictMode() && (!net_session_active() || net_session.is_host))
+  if (dsda_InputActivated(dsda_input_speed_down))
   {
     int value = StepwiseSum(dsda_GameSpeed(), -1, 3, 10000, 100);
     dsda_UpdateGameSpeed(value);
@@ -5450,20 +5483,21 @@ static dboolean M_InactiveMenuResponder(int ch, int action, event_t* ev)
   {
     if (
       gamestate == GS_LEVEL &&
-      gameaction == ga_nothing
+      gameaction == ga_nothing &&
+      !dsda_StrictMode()
     ) dsda_StoreQuickKeyFrame();
     return true;
   }
 
   if (dsda_InputActivated(dsda_input_restore_quick_key_frame))
   {
-    dsda_RestoreQuickKeyFrame();
+    if (!dsda_StrictMode()) dsda_RestoreQuickKeyFrame();
     return true;
   }
 
   if (dsda_InputActivated(dsda_input_rewind))
   {
-    dsda_RewindAutoKeyFrame();
+    if (!dsda_StrictMode()) dsda_RewindAutoKeyFrame();
     return true;
   }
 
@@ -5481,7 +5515,7 @@ static dboolean M_InactiveMenuResponder(int ch, int action, event_t* ev)
     }
   }
 
-  if (dsda_InputActivated(dsda_input_showalive))
+  if (dsda_InputActivated(dsda_input_showalive) && !dsda_StrictMode())
   {
     if (V_IsOpenGLMode())
     {

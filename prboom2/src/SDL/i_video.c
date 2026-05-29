@@ -396,7 +396,8 @@ static void I_GetEvent(void)
 
       case SDL_CONTROLLERBUTTONDOWN:
       case SDL_CONTROLLERBUTTONUP:
-        dsda_PollGameControllerButtons();
+        if (dsda_AllowGameController())
+          dsda_PollGameControllerButtons();
         break;
 
       case SDL_TEXTINPUT:
@@ -438,8 +439,12 @@ static void I_GetEvent(void)
 void I_StartTic (void)
 {
   I_GetEvent();
-  I_ReadMouse();
-  dsda_PollGameController();
+
+  if (dsda_AllowMouse())
+    I_ReadMouse();
+
+  if (dsda_AllowGameController())
+    dsda_PollGameController();
 }
 
 //
