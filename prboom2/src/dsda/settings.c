@@ -146,7 +146,7 @@ dboolean dsda_VertMouse(void) {
 }
 
 dboolean dsda_StrictMode(void) {
-  return dsda_IntConfig(dsda_config_strict_mode) && demorecording;
+  return false;
 }
 
 dboolean dsda_MuteSfx(void) {
