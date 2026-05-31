@@ -78,9 +78,6 @@ int net_read_ticcmd(const unsigned char *buf, ticcmd_t *cmd)
   return NET_TICCMD_SIZE;
 }
 
-// net_setup_t serialization: 10 int32 fields = 40 bytes
-#define NET_SETUP_SIZE (10 * 4)
-
 int net_write_setup(unsigned char *buf, const net_setup_t *setup)
 {
   write_i32(&buf[0],  setup->skill);
@@ -93,6 +90,7 @@ int net_write_setup(unsigned char *buf, const net_setup_t *setup)
   write_i32(&buf[28], setup->respawn);
   write_i32(&buf[32], setup->longtics);
   write_i32(&buf[36], setup->game_speed);
+  memcpy(&buf[40], setup->from_key_frame, NET_KF_FILENAME_MAX);
   return NET_SETUP_SIZE;
 }
 
@@ -108,6 +106,8 @@ int net_read_setup(const unsigned char *buf, net_setup_t *setup)
   setup->respawn     = read_i32(&buf[28]);
   setup->longtics    = read_i32(&buf[32]);
   setup->game_speed  = read_i32(&buf[36]);
+  memcpy(setup->from_key_frame, &buf[40], NET_KF_FILENAME_MAX);
+  setup->from_key_frame[NET_KF_FILENAME_MAX - 1] = '\0';
   return NET_SETUP_SIZE;
 }
 

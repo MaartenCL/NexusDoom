@@ -102,6 +102,14 @@ static void net_session_build_setup(net_setup_t *setup)
   setup->respawn    = respawnparm;
   setup->longtics   = 0;
   setup->game_speed = dsda_GameSpeed();
+
+  // -from_key_frame: send the filename so the client restores from the same file
+  memset(setup->from_key_frame, 0, NET_KF_FILENAME_MAX);
+  arg = dsda_Arg(dsda_arg_from_key_frame);
+  if (arg->found && arg->value.v_string) {
+    strncpy(setup->from_key_frame, arg->value.v_string, NET_KF_FILENAME_MAX - 1);
+    setup->from_key_frame[NET_KF_FILENAME_MAX - 1] = '\0';
+  }
 }
 
 static void net_session_apply_setup(const net_setup_t *setup)
@@ -178,12 +186,23 @@ static void net_session_apply_setup(const net_setup_t *setup)
               setup->episode, setup->map);
     dsda_UpdateFlag(dsda_arg_warp, false);
   }
+
+  // -from_key_frame: host's filename is authoritative.
+  // Both peers must have an identical .kf file on disk under this name.
+  if (setup->from_key_frame[0] != '\0') {
+    arg = dsda_Arg(dsda_arg_from_key_frame);
+    if (arg->found && strcmp(arg->value.v_string, setup->from_key_frame) != 0)
+      lprintf(LO_WARN, "Ignoring local -from_key_frame %s, using host's %s\n",
+              arg->value.v_string, setup->from_key_frame);
+    dsda_UpdateStringArg(dsda_arg_from_key_frame, setup->from_key_frame);
+    lprintf(LO_INFO, "Host uses -from_key_frame %s\n", setup->from_key_frame);
+  }
 }
 
 int net_session_host_start(int port)
 {
   net_setup_t setup;
-  unsigned char buf[256];
+  unsigned char buf[NET_SETUP_SIZE + NET_HEADER_SIZE];
   int len;
   int client_sock;
   int msg_type;
@@ -277,7 +296,7 @@ int net_session_host_start(int port)
 int net_session_client_start(const char *address, int port)
 {
   net_setup_t setup;
-  unsigned char buf[256];
+  unsigned char buf[NET_SETUP_SIZE + NET_HEADER_SIZE];
   int len;
   int sock;
   int msg_type;

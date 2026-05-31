@@ -19,6 +19,8 @@
 #define NET_DEFAULT_PORT 26101
 #define NET_TICCMD_SIZE  15
 #define NET_CHECKSUM_SIZE 8
+#define NET_KF_FILENAME_MAX 256
+#define NET_SETUP_SIZE (10 * 4 + NET_KF_FILENAME_MAX)
 
 // Wire protocol message types
 typedef enum {
@@ -45,6 +47,7 @@ typedef struct {
   int respawn;
   int longtics;
   int game_speed; // host's -game_speed value (percent, default 100)
+  char from_key_frame[NET_KF_FILENAME_MAX]; // host's -from_key_frame filename (empty = none)
 } net_setup_t;
 
 // Ticcmd message: sequence number + ticcmd
