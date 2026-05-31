@@ -735,6 +735,12 @@ static int NetRunOneTic(void)
       NetResetAfterRestore();
       return 0;
     }
+
+    if (combined_op & KF_OP_REWIND) {
+      dsda_RewindAutoKeyFrame();
+      NetResetAfterRestore();
+      return 0;
+    }
   }
 
   if (advancedemo)

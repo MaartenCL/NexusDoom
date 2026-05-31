@@ -5508,7 +5508,12 @@ static dboolean M_InactiveMenuResponder(int ch, int action, event_t* ev)
 
   if (dsda_InputActivated(dsda_input_rewind))
   {
-    if (!dsda_StrictMode()) dsda_RewindAutoKeyFrame();
+    if (!dsda_StrictMode()) {
+      if (net_session_active())
+        NetRequestKeyFrameOp(KF_OP_REWIND);
+      else
+        dsda_RewindAutoKeyFrame();
+    }
     return true;
   }
 

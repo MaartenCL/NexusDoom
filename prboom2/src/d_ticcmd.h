@@ -40,6 +40,7 @@
 #define KF_OP_NONE    0
 #define KF_OP_STORE   1
 #define KF_OP_RESTORE 2
+#define KF_OP_REWIND  4
 
 typedef struct {
   byte actions;
