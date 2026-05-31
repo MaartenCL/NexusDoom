@@ -10,6 +10,7 @@
 //  Multiplayer session management (connection protocol)
 //
 
+#include <stdio.h>
 #include <string.h>
 #include <signal.h>
 #ifdef _WIN32
@@ -21,8 +22,11 @@
 #endif
 
 #include "doomstat.h"
+#include "d_main.h"
+#include "dsda/args.h"
 #include "dsda/global.h"
 #include "dsda/demo.h"
+#include "dsda/mapinfo.h"
 #include "dsda/settings.h"
 #include "i_main.h"
 #include "i_system.h"
@@ -73,6 +77,20 @@ static void net_session_reset(void)
 static void net_session_build_setup(net_setup_t *setup)
 {
   extern int startskill, startepisode, startmap;
+  dsda_arg_t *arg;
+
+  // Resolve -warp early: HandleWarp() runs much later in D_DoomMainSetup,
+  // so startmap/startepisode are still at defaults here. We need the host's
+  // resolved warp target in the setup message sent to the client.
+  arg = dsda_Arg(dsda_arg_warp);
+  if (arg->found) {
+    int ep, map;
+    dsda_ResolveWarp(arg->value.v_int_array, arg->count, &ep, &map);
+    if (map == -1)
+      dsda_FirstMap(&ep, &map);
+    startepisode = ep;
+    startmap = map;
+  }
 
   setup->skill      = startskill;
   setup->episode    = startepisode;
@@ -89,6 +107,8 @@ static void net_session_build_setup(net_setup_t *setup)
 static void net_session_apply_setup(const net_setup_t *setup)
 {
   extern int startskill, startepisode, startmap;
+  char buf[16];
+  dsda_arg_t *arg;
 
   startskill    = setup->skill;
   startepisode  = setup->episode;
@@ -97,12 +117,67 @@ static void net_session_apply_setup(const net_setup_t *setup)
   compatibility_level = setup->complevel;
   dsda_MarkCompatibilityLevelSpecified();
   deathmatch    = setup->deathmatch;
-  nomonsters    = setup->nomonsters;
-  fastparm      = setup->fast;
-  respawnparm   = setup->respawn;
+  nomonsters    = clnomonsters  = setup->nomonsters;
+  fastparm      = clfastparm    = setup->fast;
+  respawnparm   = clrespawnparm = setup->respawn;
   // Apply host's game speed. Do NOT call dsda_ResetTimeFunctions() here;
   // the MP pacing gate in NetRunOneTic owns throttling for the net loop.
   dsda_UpdateGameSpeed(setup->game_speed);
+
+  // Override client CLI args with host's authoritative values so that
+  // downstream code (G_ReloadDefaults, dsda_CompatibilityLevel,
+  // dsda_InitGameModifiers, etc.) cannot clobber the host's settings.
+
+  // -complevel
+  arg = dsda_Arg(dsda_arg_complevel);
+  if (arg->found && arg->value.v_int != setup->complevel)
+    lprintf(LO_WARN, "Ignoring local -complevel %d, using host's %d\n",
+            arg->value.v_int, setup->complevel);
+  snprintf(buf, sizeof(buf), "%d", setup->complevel);
+  dsda_UpdateIntArg(dsda_arg_complevel, buf);
+
+  // -skill (CLI is 1-based, startskill is 0-based)
+  arg = dsda_Arg(dsda_arg_skill);
+  if (arg->found && arg->value.v_int != setup->skill + 1)
+    lprintf(LO_WARN, "Ignoring local -skill %d, using host's %d\n",
+            arg->value.v_int, setup->skill + 1);
+  snprintf(buf, sizeof(buf), "%d", setup->skill + 1);
+  dsda_UpdateIntArg(dsda_arg_skill, buf);
+
+  // -fast
+  if (dsda_Flag(dsda_arg_fast) && !setup->fast)
+    lprintf(LO_WARN, "Ignoring local -fast, host does not use it\n");
+  else if (!dsda_Flag(dsda_arg_fast) && setup->fast)
+    lprintf(LO_INFO, "Host uses -fast\n");
+  dsda_UpdateFlag(dsda_arg_fast, setup->fast != 0);
+
+  // -respawn
+  if (dsda_Flag(dsda_arg_respawn) && !setup->respawn)
+    lprintf(LO_WARN, "Ignoring local -respawn, host does not use it\n");
+  else if (!dsda_Flag(dsda_arg_respawn) && setup->respawn)
+    lprintf(LO_INFO, "Host uses -respawn\n");
+  dsda_UpdateFlag(dsda_arg_respawn, setup->respawn != 0);
+
+  // -nomonsters
+  if (dsda_Flag(dsda_arg_nomonsters) && !setup->nomonsters)
+    lprintf(LO_WARN, "Ignoring local -nomonsters, host does not use it\n");
+  else if (!dsda_Flag(dsda_arg_nomonsters) && setup->nomonsters)
+    lprintf(LO_INFO, "Host uses -nomonsters\n");
+  dsda_UpdateFlag(dsda_arg_nomonsters, setup->nomonsters != 0);
+
+  // -warp: host's startepisode/startmap have already been applied above.
+  // Clear the client's -warp arg so HandleWarp() (called later) won't
+  // overwrite them with the client's local warp target.
+  arg = dsda_Arg(dsda_arg_warp);
+  if (arg->found) {
+    int local_ep = (arg->count >= 2) ? arg->value.v_int_array[0] : 0;
+    int local_map = (arg->count >= 2) ? arg->value.v_int_array[1]
+                                      : (arg->count >= 1 ? arg->value.v_int_array[0] : 0);
+    if (local_ep != setup->episode || local_map != setup->map)
+      lprintf(LO_WARN, "Ignoring local -warp, using host's E%dM%d\n",
+              setup->episode, setup->map);
+    dsda_UpdateFlag(dsda_arg_warp, false);
+  }
 }
 
 int net_session_host_start(int port)
