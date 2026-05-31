@@ -68,6 +68,7 @@
 #include "m_fixed.h"
 
 #include "dsda/args.h"
+#include "dsda/key_frame.h"
 #include "dsda/settings.h"
 #include "dsda/time.h"
 
@@ -79,6 +80,8 @@ ticcmd_t local_cmds[MAX_MAXPLAYERS][BACKUPTICS];
 int maketic;
 int solo_net = 0;
 static int remote_maketic;
+
+static int pending_key_frame_op;
 
 static dboolean net_out_of_sync;
 static dboolean net_desync_diag;
@@ -152,6 +155,23 @@ void NetResetState(void)
   net_pacing_next_tic_us = 0;
   net_interpolation_frac = FRACUNIT;
   NetResetChecksumState();
+}
+
+// Reset network loop state after a key frame restore. Unlike NetResetState
+// (which is for disconnect/init), this sets maketic and remote_maketic to the
+// restored gametic rather than zero.
+static void NetResetAfterRestore(void)
+{
+  maketic = gametic;
+  remote_maketic = gametic;
+  net_pacing_next_tic_us = 0;
+  net_interpolation_frac = FRACUNIT;
+  NetResetChecksumState();
+}
+
+void NetRequestKeyFrameOp(int op)
+{
+  pending_key_frame_op = op;
 }
 
 static unsigned int NetChecksumBytes(unsigned int hash, const void *data, size_t size)
@@ -504,6 +524,13 @@ static void NetUpdate(void)
     local_cmds[local][maketic % BACKUPTICS].ex.net_game_speed =
         (unsigned short)dsda_GameSpeed();
 
+  // Stamp pending key frame op (store/restore intent) for synchronized execution.
+  if (pending_key_frame_op) {
+    local_cmds[local][maketic % BACKUPTICS].ex.key_frame_op =
+        (byte)pending_key_frame_op;
+    pending_key_frame_op = KF_OP_NONE;
+  }
+
   // Send to remote
   net_write_ticcmd(buf, &local_cmds[local][maketic % BACKUPTICS]);
   if (net_send_packet(net_session.socket, NET_MSG_TICCMD, buf, NET_TICCMD_SIZE) != 0) {
@@ -686,6 +713,28 @@ static int NetRunOneTic(void)
 
     if (synced_speed > 0 && (int)synced_speed != dsda_GameSpeed())
       dsda_UpdateGameSpeed((int)synced_speed);
+  }
+
+  // Synchronized key frame store/restore: if either player signalled an op,
+  // execute it on both clients at the same gametic before G_Ticker() advances.
+  // The game-state portion of the key frame is byte-identical on both clients
+  // under lockstep; the demo-buffer portion may differ (each client records
+  // from its own consoleplayer) but each client only restores its own buffer.
+  {
+    int local = net_session.local_player;
+    int remote = net_session.remote_player;
+    byte local_op = local_cmds[local][gametic % BACKUPTICS].ex.key_frame_op;
+    byte remote_op = local_cmds[remote][gametic % BACKUPTICS].ex.key_frame_op;
+    byte combined_op = local_op | remote_op;
+
+    if (combined_op & KF_OP_STORE)
+      dsda_StoreQuickKeyFrame();
+
+    if (combined_op & KF_OP_RESTORE) {
+      dsda_RestoreQuickKeyFrame();
+      NetResetAfterRestore();
+      return 0;
+    }
   }
 
   if (advancedemo)

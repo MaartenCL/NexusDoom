@@ -100,6 +100,7 @@
 #include "dsda/text_color.h"
 #include "dsda/utility.h"
 #include "dsda/wad_stats.h"
+#include "d_net.h"
 #include "net_session.h"
 
 #include "heretic/mn_menu.h"
@@ -5485,13 +5486,23 @@ static dboolean M_InactiveMenuResponder(int ch, int action, event_t* ev)
       gamestate == GS_LEVEL &&
       gameaction == ga_nothing &&
       !dsda_StrictMode()
-    ) dsda_StoreQuickKeyFrame();
+    ) {
+      if (net_session_active())
+        NetRequestKeyFrameOp(KF_OP_STORE);
+      else
+        dsda_StoreQuickKeyFrame();
+    }
     return true;
   }
 
   if (dsda_InputActivated(dsda_input_restore_quick_key_frame))
   {
-    if (!dsda_StrictMode()) dsda_RestoreQuickKeyFrame();
+    if (!dsda_StrictMode()) {
+      if (net_session_active())
+        NetRequestKeyFrameOp(KF_OP_RESTORE);
+      else
+        dsda_RestoreQuickKeyFrame();
+    }
     return true;
   }
 

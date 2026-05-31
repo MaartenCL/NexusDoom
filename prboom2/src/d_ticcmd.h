@@ -36,12 +36,18 @@
 
 #include "doomtype.h"
 
+// Key frame operations (wire-only, not recorded to demo)
+#define KF_OP_NONE    0
+#define KF_OP_STORE   1
+#define KF_OP_RESTORE 2
+
 typedef struct {
   byte actions;
   byte save_slot;
   byte load_slot;
   signed short look;
   unsigned short net_game_speed; // wire-only: host's game_speed for this tic (0 = no change)
+  byte key_frame_op; // wire-only: KF_OP_STORE or KF_OP_RESTORE (0 = no op)
 } excmd_t;
 
 /* The data sampled per tick (single player)

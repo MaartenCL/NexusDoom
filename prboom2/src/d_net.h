@@ -60,4 +60,8 @@ void NetResetState(void);
 // Only meaningful when net_session_active() is true.
 fixed_t NetGetTimeFrac(void);
 
+// Queue a key frame operation (KF_OP_STORE / KF_OP_RESTORE) to be stamped
+// into the next outgoing ticcmd for synchronized execution in multiplayer.
+void NetRequestKeyFrameOp(int op);
+
 #endif
